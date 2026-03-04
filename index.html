@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>檔案室本週競賽任務管理</title>
+    <style>
+        :root { --bg-color: #f0f2f5; --card-bg: #ffffff; --complete-red: #ff4d4f; --reserve-yellow: #ffc107; }
+        body { font-family: "Microsoft JhengHei", sans-serif; background-color: var(--bg-color); margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; }
+        .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; width: 100%; max-width: 1000px; }
+        @media (max-width: 600px) { .grid-container { grid-template-columns: repeat(3, 1fr); gap: 6px; } }
+        .grid-item { background: var(--card-bg); border: 1px solid #ddd; border-radius: 8px; position: relative; padding: 15px 8px; display: flex; flex-direction: column; justify-content: space-between; min-height: 130px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .item-number { position: absolute; top: 3px; right: 6px; font-size: 10px; color: #bbb; }
+        .task-name { font-weight: bold; color: #444; font-size: 14px; text-align: center; line-height: 1.2; }
+        .assignee { font-size: 11px; color: #888; text-align: center; margin-top: 4px; }
+        .complete-stamp { position: absolute; color: var(--complete-red); font-weight: 900; font-size: 18px; border: 2px solid var(--complete-red); padding: 2px 8px; border-radius: 4px; transform: rotate(-20deg); display: none; z-index: 2; background: rgba(255,255,255,0.9); left: 5px; top: 40px; pointer-events: none; }
+        .button-group { display: flex; gap: 4px; margin-top: 8px; }
+        .btn { flex: 1; border: none; padding: 7px 0; border-radius: 4px; color: white; font-size: 11px; font-weight: bold; cursor: pointer; }
+        .btn-reserve { background: var(--reserve-yellow); color: #333; }
+        .btn-complete { background: #28a745; }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 100; }
+        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 25px; border-radius: 15px; width: 85%; max-width: 320px; z-index: 101; }
+        .modal select { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 8px; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+    <h1>檔案室本週競賽任務管理</h1>
+    <div id="loading" style="color: blue; margin-bottom: 10px;">資料載入中...</div>
+    <div class="grid-container" id="mainGrid"></div>
+
+    <div class="modal-overlay" id="overlay" onclick="closeModal()"></div>
+    <div class="modal" id="taskModal">
+        <h3 style="margin-top:0">設定任務</h3>
+        <label style="font-size:12px; color:#666">選擇任務：</label>
+        <select id="taskSelect"></select>
+        <label style="font-size:12px; color:#666">接取人員：</label>
+        <select id="userSelect"></select>
+        <button class="btn btn-reserve" style="width:100%; padding:12px; font-size:14px" onclick="confirmTask()">確認儲存並同步</button>
+    </div>
+
+    <script>
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyT64IkZksYdYkLHFXiZu22AIV5yew5q3JuZJuRrnTp8_Iy9vVl7Jh9efFfH2G3voT8/exec";
+        let activeBoxId = null;
+
+        window.onload = () => { createGrid(); initData(); };
+
+        function createGrid() {
+            const container = document.getElementById('mainGrid');
+            for (let i = 1; i <= 66; i++) {
+                const item = document.createElement('div');
+                item.className = 'grid-item';
+                item.id = `box-${i}`;
+                item.innerHTML = `<div class="item-number">${i}</div><div class="complete-stamp" id="stamp-${i}">(已完成)</div>
+                    <div class="task-name" id="name-${i}">等待中</div><div class="assignee" id="user-${i}">-</div>
+                    <div class="button-group"><button class="btn btn-reserve" onclick="markAction(${i}, 'reserve')">保留</button>
+                    <button class="btn btn-complete" onclick="markAction(${i}, 'complete')">完成</button></div>`;
+                container.appendChild(item);
+            }
+        }
+
+async function initData() {
+    try {
+        const baseRes = await fetch(SCRIPT_URL);
+        const baseData = await baseRes.json();
+        
+        const userSel = document.getElementById('userSelect');
+        const taskSel = document.getElementById('taskSelect');
+        
+        // --- 1. 設定人員選單 (排除管理員) ---
+        userSel.innerHTML = '<option value="" disabled selected>-- 請選擇人員 --</option><option value="沒指定">沒指定</option>';
+        if (baseData.members) {
+            baseData.members.slice(1).forEach(r => {
+                if(r[2] && r[2].toString().trim() !== "管理員") {
+                    userSel.options.add(new Option(r[2], r[2]));
+                }
+            });
+        }
+
+        // --- 2. 設定任務選單 (抓取第四欄 D 欄人名，且 3 人以上持有才顯示) ---
+        taskSel.innerHTML = '<option value="" disabled selected>-- 請選擇任務 --</option>';
+        
+        // 固定顯示的特殊任務
+        ["居民任務", "顧客任務", "培養任務"].forEach(t => taskSel.options.add(new Option(t, t)));
+
+        if (baseData.flowers) {
+            baseData.flowers.slice(1).forEach(r => {
+                const flowerName = r[0]; // A 欄：花名
+                
+                // --- 關鍵修改處：r[3] 代表第四欄 (D 欄) ---
+                const owners = r[3] ? r[3].toString().split(',') : []; 
+                
+                // 清理空白字串並計算人數
+                const validOwners = owners.map(n => n.trim()).filter(n => n !== "");
+                
+                // 只有當花名存在，且第四欄的人數大於等於 3 人時才加入選單
+                if (flowerName && validOwners.length >= 3) {
+                    taskSel.options.add(new Option(flowerName, flowerName));
+                }
+            });
+        }
+
+        // --- 3. 載入格子狀態 ---
+        const compRes = await fetch(`${SCRIPT_URL}?action=getCompetition`);
+        const compData = await compRes.json();
+        compData.forEach(item => updateUI(item.id, item.task, item.user, item.status, false));
+        
+        document.getElementById('loading').style.display = 'none';
+    } catch(e) { 
+        console.error("載入失敗:", e);
+        document.getElementById('loading').innerText = "連線失敗"; 
+    }
+}
+        function updateUI(id, task, user, status, isNew) {
+            const nameEl = document.getElementById(`name-${id}`);
+            const userEl = document.getElementById(`user-${id}`);
+            const stamp = document.getElementById(`stamp-${id}`);
+            const box = document.getElementById(`box-${id}`);
+
+            if (task) { nameEl.innerText = task; nameEl.style.color = isNew ? "red" : "#444"; }
+            if (user) userEl.innerText = `接取：${user}`;
+            
+            if (status === '已完成') {
+                stamp.style.display = 'block'; box.style.backgroundColor = "#f8fff9"; nameEl.style.opacity = "0.2";
+            } else {
+                stamp.style.display = 'none'; box.style.backgroundColor = "#ffffff"; nameEl.style.opacity = "1";
+            }
+        }
+
+        function markAction(id, type) {
+            activeBoxId = id;
+            if (type === 'reserve') {
+                document.getElementById('taskModal').style.display = 'block';
+                document.getElementById('overlay').style.display = 'block';
+            } else { pushData(id, null, null, '已完成'); }
+        }
+
+        async function confirmTask() {
+            const t = document.getElementById('taskSelect').value;
+            const u = document.getElementById('userSelect').value;
+            if(!t || !u) { alert("⚠️ 請選好任務與人員！"); return; }
+            await pushData(activeBoxId, t, u, '已保留');
+            closeModal();
+        }
+
+        async function pushData(id, t, u, s) {
+            const nameEl = document.getElementById(`name-${id}`);
+            const oldT = nameEl.innerText;
+            // 樂觀更新：立即顯示結果
+            updateUI(id, t, u, s, true);
+            if (t) nameEl.innerText = "同步中...";
+
+            try {
+                await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify({ action: "updateCompetition", id: id, task: t, user: u, status: s }) });
+                if (t) nameEl.innerText = t;
+            } catch (e) { alert("同步失敗！"); location.reload(); }
+        }
+
+        function closeModal() {
+            document.getElementById('taskModal').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
