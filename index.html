@@ -115,7 +115,7 @@ async function initData() {
         taskSel.innerHTML = '<option value="" disabled selected>-- 請選擇任務 --</option>';
         
         // 固定顯示的特殊任務
-        ["居民任務", "顧客任務", "培養任務"].forEach(t => taskSel.options.add(new Option(t, t)));
+        ["居民任務", "顧客任務", "培養任務", "週花"].forEach(t => taskSel.options.add(new Option(t, t)));
 
         if (baseData.flowers) {
             baseData.flowers.slice(1).forEach(r => {
@@ -204,6 +204,7 @@ function markAction(id, type) {
 </body>
 
 </html>
+
 
 
 
