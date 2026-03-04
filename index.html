@@ -14,18 +14,40 @@
             position: absolute;
             top: 0;
             right: 0;
-            background-color: #f0f0f0; /* 淺灰色底色 */
-            color: #888888;           /* 灰色字體 */
-            font-size: 18px;          /* 放大字體 */
-            font-weight: 900;         /* 極粗體 */
-            padding: 2px 8px;         /* 內距讓底色撐開 */
-            border-radius: 0 8px 0 8px; /* 只有右上跟左下圓角，更有設計感 */
-            font-family: Arial, sans-serif;
-            z-index: 1;
+            background-color: #f0f0f0;
+            color: #888888;
+            font-size: 18px;
+            font-weight: 900;
+            padding: 2px 10px; /* 稍微增加寬度感 */
+            border-radius: 0 8px 0 8px;
+            z-index: 3; /* 確保編號永遠在最上層 */
         }
-        .task-name { font-weight: bold; color: #444; font-size: 14px; text-align: center; line-height: 1.2; }
+        .task-name { 
+            font-weight: bold; 
+            color: #444; 
+            font-size: 14px; 
+            text-align: center; 
+            line-height: 1.2;
+            margin-top: 25px; /* 新增這行：讓文字避開右上角的編號標籤 */
+        }
         .assignee { font-size: 11px; color: #888; text-align: center; margin-top: 4px; }
-        .complete-stamp { position: absolute; color: var(--complete-red); font-weight: 900; font-size: 18px; border: 2px solid var(--complete-red); padding: 2px 8px; border-radius: 4px; transform: rotate(-20deg); display: none; z-index: 2; background: rgba(255,255,255,0.9); left: 5px; top: 40px; pointer-events: none; }
+       .complete-stamp { 
+            position: absolute; 
+            color: var(--complete-red); 
+            font-weight: 900; 
+            font-size: 18px; 
+            border: 2px solid var(--complete-red); 
+            padding: 2px 8px; 
+            border-radius: 4px; 
+            /* 修改處：從 -20deg 改為 20deg，並微調位置 */
+            transform: rotate(20deg); 
+            display: none; 
+            z-index: 2; 
+            background: rgba(255,255,255,0.9); 
+            left: 15px; 
+            top: 50px; 
+            pointer-events: none; 
+        } 
         .button-group { display: flex; gap: 4px; margin-top: 8px; }
         .btn { flex: 1; border: none; padding: 7px 0; border-radius: 4px; color: white; font-size: 11px; font-weight: bold; cursor: pointer; }
         .btn-reserve { background: var(--reserve-yellow); color: #333; }
@@ -176,5 +198,6 @@ async function initData() {
 </body>
 
 </html>
+
 
 
