@@ -223,6 +223,55 @@
         }
 
         function closeModal() { document.getElementById('taskModal').style.display='none'; document.getElementById('overlay').style.display='none'; }
+<style>
+    /* ... 基礎設定保持不變 ... */
+
+    .grid-container {
+        display: grid;
+        /* 電腦版：自動填滿，最小寬度 110px */
+        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+        gap: 8px;
+        width: 100%;
+        max-width: 1000px;
+        margin-top: 45px;
+        padding: 0; /* 確保不留白邊 */
+    }
+
+    /* 📱 手機版專屬：強制固定為三等份 */
+    @media (max-width: 600px) {
+        .grid-container {
+            /* 強制切成三等份，1fr 代表等寬 */
+            grid-template-columns: repeat(3, 1fr) !important; 
+            gap: 5px; /* 縮小間距讓空間更大 */
+        }
+        
+        .grid-item {
+            padding: 8px 4px !important; /* 縮小內距防止內容撐開寬度 */
+            min-height: 220px !important; /* 統一度，避免長短不一 */
+            width: auto;
+            overflow: hidden; /* 強制隱藏溢出內容 */
+        }
+
+        .task-name {
+            font-size: 11px !important; /* 手機字體調小，防止撐開格子 */
+            word-break: break-all; /* 強制斷行 */
+        }
+
+        .log-entry {
+            font-size: 8px !important; /* 歷史紀錄字體調至最小 */
+        }
+    }
+
+    .grid-item {
+        background: var(--card-bg);
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        box-sizing: border-box; /* 關鍵：讓 padding 不會增加寬度 */
+    }
+</style>
     </script>
 </body>
 </html>
