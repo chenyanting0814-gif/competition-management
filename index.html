@@ -10,7 +10,16 @@
         .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; width: 100%; max-width: 1000px; }
         @media (max-width: 600px) { .grid-container { grid-template-columns: repeat(3, 1fr); gap: 6px; } }
         .grid-item { background: var(--card-bg); border: 1px solid #ddd; border-radius: 8px; position: relative; padding: 15px 8px; display: flex; flex-direction: column; justify-content: space-between; min-height: 130px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .item-number { position: absolute; top: 3px; right: 6px; font-size: 10px; color: #bbb; }
+       .item-number {
+            position: absolute;
+            top: 5px;
+            right: 8px;
+            font-size: 20px;   /* 從 10px 放大到 20px */
+            font-weight: 900;  /* 加粗字體 */
+            color: #e0e0e0;    /* 使用淺灰色，才不會搶走任務名稱的視覺重點 */
+            font-style: italic; /* 斜體增加設計感 */
+            z-index: 1;        /* 確保在背景之上 */
+        }
         .task-name { font-weight: bold; color: #444; font-size: 14px; text-align: center; line-height: 1.2; }
         .assignee { font-size: 11px; color: #888; text-align: center; margin-top: 4px; }
         .complete-stamp { position: absolute; color: var(--complete-red); font-weight: 900; font-size: 18px; border: 2px solid var(--complete-red); padding: 2px 8px; border-radius: 4px; transform: rotate(-20deg); display: none; z-index: 2; background: rgba(255,255,255,0.9); left: 5px; top: 40px; pointer-events: none; }
@@ -164,3 +173,4 @@ async function initData() {
 </body>
 
 </html>
+
