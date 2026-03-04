@@ -132,18 +132,26 @@
                 taskSel.innerHTML = '<option value="" disabled selected>-- 請選擇任務 --</option>';
                 ["居民任務", "顧客任務", "培養任務", "週花"].forEach(t => taskSel.options.add(new Option(t, t)));
 
-                if (baseData.flowers) {
-                    baseData.flowers.slice(1).forEach(r => {
-                        const flowerName = r[0]; 
-                        const owners = r[2] ? r[2].toString().split(',') : []; 
-                        const validOwners = owners.map(n => n.trim()).filter(n => n !== "");
-                        
-                        // --- 修改處：持有者人數需大於 1 (即 2 人或以上持有) 才顯示 ---
-                        if (flowerName && validOwners.length > 1) {
-                            taskSel.options.add(new Option(flowerName, flowerName));
-                        }
-                    });
+if (baseData.flowers) {
+            baseData.flowers.slice(1).forEach(r => {
+                const flowerName = r[0]; // A 欄：花名
+                
+                // --- 關鍵修改處：r[3] 代表第四欄 (D 欄) 擁有者名單 ---
+                const rawOwners = r[3] ? r[3].toString().split(',') : []; 
+                
+                // 使用 Set 過濾重複名字，確保是「不同的人」
+                const uniqueOwners = new Set(
+                    rawOwners
+                        .map(n => n.trim())
+                        .filter(n => n !== "")
+                );
+                
+                // 只有當花名存在，且 D 欄的「不重複人數」大於 1 (2人或以上) 時才加入選單
+                if (flowerName && uniqueOwners.size > 1) {
+                    taskSel.options.add(new Option(flowerName, flowerName));
                 }
+            });
+        }
 
                 const compRes = await fetch(`${SCRIPT_URL}?action=getCompetition`);
                 const compData = await compRes.json();
@@ -210,3 +218,4 @@
     </script>
 </body>
 </html>
+
