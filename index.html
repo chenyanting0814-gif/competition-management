@@ -2,14 +2,29 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>本週競賽任務管理</title>
     <style>
         :root { --bg-color: #f0f2f5; --card-bg: #ffffff; --complete-red: #ff4d4f; --reserve-yellow: #ffc107; }
-        body { font-family: "Microsoft JhengHei", sans-serif; background-color: var(--bg-color); margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; }
+        
+        body { 
+            font-family: "Microsoft JhengHei", sans-serif; 
+            background-color: var(--bg-color); 
+            margin: 0; 
+            padding: 15px; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center;
+            /* LINE 優化：防止下拉回彈與點擊高亮 */
+            overscroll-behavior-y: contain;
+            -webkit-tap-highlight-color: transparent;
+        }
+
         .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; width: 100%; max-width: 1000px; }
         @media (max-width: 600px) { .grid-container { grid-template-columns: repeat(3, 1fr); gap: 6px; } }
+        
         .grid-item { background: var(--card-bg); border: 1px solid #ddd; border-radius: 8px; position: relative; padding: 15px 8px; display: flex; flex-direction: column; justify-content: space-between; min-height: 130px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        
         .item-number {
             position: absolute;
             top: 0;
@@ -18,20 +33,23 @@
             color: #888888;
             font-size: 18px;
             font-weight: 900;
-            padding: 2px 10px; /* 稍微增加寬度感 */
+            padding: 2px 10px;
             border-radius: 0 8px 0 8px;
-            z-index: 3; /* 確保編號永遠在最上層 */
+            z-index: 3;
         }
+
         .task-name { 
             font-weight: bold; 
             color: #444; 
             font-size: 14px; 
             text-align: center; 
             line-height: 1.2;
-            margin-top: 25px; /* 新增這行：讓文字避開右上角的編號標籤 */
+            margin-top: 25px; 
         }
+
         .assignee { font-size: 11px; color: #888; text-align: center; margin-top: 4px; }
-       .complete-stamp { 
+
+        .complete-stamp { 
             position: absolute; 
             color: var(--complete-red); 
             font-weight: 900; 
@@ -39,7 +57,6 @@
             border: 2px solid var(--complete-red); 
             padding: 2px 8px; 
             border-radius: 4px; 
-            /* 修改處：從 -20deg 改為 20deg，並微調位置 */
             transform: rotate(20deg); 
             display: none; 
             z-index: 2; 
@@ -47,11 +64,13 @@
             left: 15px; 
             top: 50px; 
             pointer-events: none; 
-        } 
+        }
+
         .button-group { display: flex; gap: 4px; margin-top: 8px; }
         .btn { flex: 1; border: none; padding: 7px 0; border-radius: 4px; color: white; font-size: 11px; font-weight: bold; cursor: pointer; }
         .btn-reserve { background: var(--reserve-yellow); color: #333; }
         .btn-complete { background: #28a745; }
+
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 100; }
         .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 25px; border-radius: 15px; width: 85%; max-width: 320px; z-index: 101; }
         .modal select { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 8px; font-size: 14px; }
@@ -93,58 +112,50 @@
             }
         }
 
-async function initData() {
-    try {
-        const baseRes = await fetch(SCRIPT_URL);
-        const baseData = await baseRes.json();
-        
-        const userSel = document.getElementById('userSelect');
-        const taskSel = document.getElementById('taskSelect');
-        
-        // --- 1. 設定人員選單 (排除管理員) ---
-        userSel.innerHTML = '<option value="" disabled selected>-- 請選擇人員 --</option><option value="沒指定">沒指定</option>';
-        if (baseData.members) {
-            baseData.members.slice(1).forEach(r => {
-                if(r[2] && r[2].toString().trim() !== "管理員") {
-                    userSel.options.add(new Option(r[2], r[2]));
+        async function initData() {
+            try {
+                const baseRes = await fetch(SCRIPT_URL);
+                const baseData = await baseRes.json();
+                
+                const userSel = document.getElementById('userSelect');
+                const taskSel = document.getElementById('taskSelect');
+                
+                userSel.innerHTML = '<option value="" disabled selected>-- 請選擇人員 --</option><option value="沒指定">沒指定</option>';
+                if (baseData.members) {
+                    baseData.members.slice(1).forEach(r => {
+                        if(r[1] && r[1].toString().trim() !== "管理員") {
+                            userSel.options.add(new Option(r[2], r[2]));
+                        }
+                    });
                 }
-            });
+
+                taskSel.innerHTML = '<option value="" disabled selected>-- 請選擇任務 --</option>';
+                ["居民任務", "顧客任務", "培養任務", "週花"].forEach(t => taskSel.options.add(new Option(t, t)));
+
+                if (baseData.flowers) {
+                    baseData.flowers.slice(1).forEach(r => {
+                        const flowerName = r[0]; 
+                        const owners = r[2] ? r[2].toString().split(',') : []; 
+                        const validOwners = owners.map(n => n.trim()).filter(n => n !== "");
+                        
+                        // --- 修改處：持有者人數需大於 1 (即 2 人或以上持有) 才顯示 ---
+                        if (flowerName && validOwners.length > 1) {
+                            taskSel.options.add(new Option(flowerName, flowerName));
+                        }
+                    });
+                }
+
+                const compRes = await fetch(`${SCRIPT_URL}?action=getCompetition`);
+                const compData = await compRes.json();
+                compData.forEach(item => updateUI(item.id, item.task, item.user, item.status, false));
+                
+                document.getElementById('loading').style.display = 'none';
+            } catch(e) { 
+                console.error("載入失敗:", e);
+                document.getElementById('loading').innerText = "連線失敗"; 
+            }
         }
 
-        // --- 2. 設定任務選單 (抓取第四欄 D 欄人名，且 3 人以上持有才顯示) ---
-        taskSel.innerHTML = '<option value="" disabled selected>-- 請選擇任務 --</option>';
-        
-        // 固定顯示的特殊任務
-        ["居民任務", "顧客任務", "培養任務", "週花"].forEach(t => taskSel.options.add(new Option(t, t)));
-
-        if (baseData.flowers) {
-            baseData.flowers.slice(1).forEach(r => {
-                const flowerName = r[0]; // A 欄：花名
-                
-                // --- 關鍵修改處：r[3] 代表第四欄 (D 欄) ---
-                const owners = r[3] ? r[3].toString().split(',') : []; 
-                
-                // 清理空白字串並計算人數
-                const validOwners = owners.map(n => n.trim()).filter(n => n !== "");
-                
-                // 只有當花名存在，且第四欄的人數大於等於 3 人時才加入選單
-                if (flowerName && validOwners.length >= 3) {
-                    taskSel.options.add(new Option(flowerName, flowerName));
-                }
-            });
-        }
-
-        // --- 3. 載入格子狀態 ---
-        const compRes = await fetch(`${SCRIPT_URL}?action=getCompetition`);
-        const compData = await compRes.json();
-        compData.forEach(item => updateUI(item.id, item.task, item.user, item.status, false));
-        
-        document.getElementById('loading').style.display = 'none';
-    } catch(e) { 
-        console.error("載入失敗:", e);
-        document.getElementById('loading').innerText = "連線失敗"; 
-    }
-}
         function updateUI(id, task, user, status, isNew) {
             const nameEl = document.getElementById(`name-${id}`);
             const userEl = document.getElementById(`user-${id}`);
@@ -161,13 +172,11 @@ async function initData() {
             }
         }
 
-function markAction(id, type) {
+        function markAction(id, type) {
             activeBoxId = id;
             if (type === 'reserve') {
-                // --- 核心修改：每次打開彈窗前，先將選單歸零 ---
                 document.getElementById('taskSelect').selectedIndex = 0;
                 document.getElementById('userSelect').selectedIndex = 0;
-
                 document.getElementById('taskModal').style.display = 'block';
                 document.getElementById('overlay').style.display = 'block';
             } else { 
@@ -185,8 +194,6 @@ function markAction(id, type) {
 
         async function pushData(id, t, u, s) {
             const nameEl = document.getElementById(`name-${id}`);
-            const oldT = nameEl.innerText;
-            // 樂觀更新：立即顯示結果
             updateUI(id, t, u, s, true);
             if (t) nameEl.innerText = "同步中...";
 
@@ -202,10 +209,4 @@ function markAction(id, type) {
         }
     </script>
 </body>
-
 </html>
-
-
-
-
-
