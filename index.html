@@ -47,8 +47,7 @@
             請依公會競賽的格子<br>填寫相對應的號碼<br>
             按保留選取任務及要給誰<br>
             完成後請點選完成<br>
-            格子可重複使用<br>
-            <span class="rule-warning">僅有一人有的花不會出現喔</span>
+            格子可重複使用
         </p>
         <button class="btn-close-rule" onclick="closeRule()">我知道了</button>
     </div>
@@ -75,7 +74,7 @@
         let activeBoxId = null;
         let flowerOwnersMap = {}; 
         window.allActiveMembers = []; 
-        let allTasksBackup = []; // 用於儲存所有任務選項以便搜尋
+        let allTasksBackup = [];
 
         window.onload = () => { 
             createGrid(); 
@@ -89,7 +88,6 @@
             document.getElementById('ruleModal').style.display = 'none';
         }
 
-        // 搜尋過濾功能
         function filterTasks() {
             const keyword = document.getElementById('taskSearch').value.toLowerCase();
             const taskSel = document.getElementById('taskSelect');
@@ -98,7 +96,6 @@
             const filtered = allTasksBackup.filter(t => t.text.toLowerCase().includes(keyword));
             filtered.forEach(t => taskSel.options.add(new Option(t.text, t.value)));
             
-            // 觸發人員連動更新
             if (taskSel.onchange) taskSel.onchange();
         }
 
@@ -145,14 +142,15 @@
                         const flowerName = r[0]; 
                         const rawOwners = r[3] ? r[3].toString().split(',') : [];
                         const uniqueOwners = [...new Set(rawOwners.map(n => n.trim()).filter(n => n !== ""))];
-                        if (flowerName && uniqueOwners.length > 1) {
+                        
+                        // 修改點：移除 uniqueOwners.length > 1 的限制，讓所有花都出現
+                        if (flowerName && uniqueOwners.length > 0) {
                             allTasksBackup.push({ text: flowerName, value: flowerName });
                             flowerOwnersMap[flowerName] = uniqueOwners;
                         }
                     });
                 }
 
-                // 綁定連動邏輯
                 taskSel.onchange = function() {
                     const selectedFlower = this.value;
                     const flowerOwners = flowerOwnersMap[selectedFlower];
@@ -172,7 +170,6 @@
                     }
                 };
 
-                // 初始渲染選單
                 filterTasks();
 
                 const compRes = await fetch(`${SCRIPT_URL}?action=getCompetition`);
@@ -197,19 +194,13 @@
             }
         }
 
-        /* 修改點：優化 markAction 開啟邏輯 */
         function markAction(id, type) {
             activeBoxId = id;
             if (type === 'reserve') {
-                // 1. 先清空搜尋框
                 document.getElementById('taskSearch').value = '';
-                // 2. 重新還原所有選項
                 filterTasks();
-                // 3. 設定預設為第一項 (-- 請選擇任務 --)
                 document.getElementById('taskSelect').selectedIndex = 0;
-                // 4. 重設人員選單
                 document.getElementById('userSelect').innerHTML = '<option value="" disabled selected>-- 請先選擇任務 --</option>';
-                // 5. 顯示彈窗
                 document.getElementById('taskModal').style.display = 'block';
                 document.getElementById('overlay').style.display = 'block';
             } else { pushData(id, null, null, '已完成'); }
