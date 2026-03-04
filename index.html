@@ -161,12 +161,18 @@ async function initData() {
             }
         }
 
-        function markAction(id, type) {
+function markAction(id, type) {
             activeBoxId = id;
             if (type === 'reserve') {
+                // --- 核心修改：每次打開彈窗前，先將選單歸零 ---
+                document.getElementById('taskSelect').selectedIndex = 0;
+                document.getElementById('userSelect').selectedIndex = 0;
+
                 document.getElementById('taskModal').style.display = 'block';
                 document.getElementById('overlay').style.display = 'block';
-            } else { pushData(id, null, null, '已完成'); }
+            } else { 
+                pushData(id, null, null, '已完成'); 
+            }
         }
 
         async function confirmTask() {
@@ -198,6 +204,7 @@ async function initData() {
 </body>
 
 </html>
+
 
 
 
